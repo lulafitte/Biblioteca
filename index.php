@@ -1,6 +1,6 @@
 <?php
     // Incluye la lógica de conexión a la base de datos
-    require_once 'conecxion.php';
+    require_once 'conexion.php';
 
     // 1. Realizar la consulta para seleccionar todos los autores
     $consulta = "SELECT id_autor, nombre, nacionalidad FROM autores ORDER BY nombre ASC";
