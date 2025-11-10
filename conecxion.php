@@ -18,10 +18,9 @@ if (!$conexion) {
     die("Error al conectar con la base de datos: " . mysqli_connect_error());
 }
 
-// Opcional: Establecer el juego de caracteres a UTF-8 para evitar problemas de acentos y eñes
+// evitar problemas de acentos y eñes
 mysqli_set_charset($conexion, "utf8");
 
-// La variable $conexion ya contiene el objeto de conexión
-// que usaremos para todas las consultas.
+
 
 ?>
