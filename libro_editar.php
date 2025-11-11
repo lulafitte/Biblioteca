@@ -1,68 +1,88 @@
 <?php
-    require_once 'conexion.php';
+require_once 'conexion.php';
 
-    // 1. Obtener el ID del libro a editar de la URL
-    if (!isset($_GET['id']) || empty($_GET['id'])) {
-        header("Location: libros.php?error=ID de libro no proporcionado.");
-        exit();
-    }
+// 1. Obtener el ID del libro a editar de la URL y validar
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header("Location: libros.php?error=ID de libro no proporcionado o inválido.");
+    exit();
+}
+// El ID es seguro porque lo validamos como número.
+$id_libro = (int)$_GET['id'];
+
+$libro = null;
+$error_msg = "";
+$success_msg = "";
+$res_autores = null; // Inicializamos para usar más tarde
+
+// 2. OBTENER AUTORES para el campo SELECT (SELECT simple, no necesita Prepared Statement)
+$sql_autores = "SELECT id_autor, nombre FROM autores ORDER BY nombre ASC";
+$res_autores = mysqli_query($conexion, $sql_autores);
+
+if (!$res_autores) {
+    $error_msg = "Error al cargar la lista de autores: " . mysqli_error($conexion);
+}
+
+// 3. PROCESAR LA ACTUALIZACIÓN (si se envió el formulario por POST)
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    $id_libro = mysqli_real_escape_string($conexion, $_GET['id']);
-    $libro = null;
-    $error_msg = "";
-    $success_msg = "";
-
-    // 2. OBTENER AUTORES para el campo SELECT
-    $sql_autores = "SELECT id_autor, nombre FROM autores ORDER BY nombre ASC";
-    $res_autores = mysqli_query($conexion, $sql_autores);
-
-    if (!$res_autores) {
-        $error_msg = "Error al cargar la lista de autores: " . mysqli_error($conexion);
-    }
+    // Obtener los datos (sin necesidad de mysqli_real_escape_string)
+    $id_libro_post = (int)$_POST['id_libro'];
+    $titulo = $_POST['titulo'] ?? '';
+    $anio_publicacion = $_POST['anio_publicacion'] ?? null;
+    $id_autor = $_POST['id_autor'] ?? null; 
     
-    // 3. PROCESAR LA ACTUALIZACIÓN (si se envió el formulario por POST)
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (!empty($titulo) && is_numeric($id_autor) && is_numeric($id_libro_post)) {
         
-        // Obtener y sanear los datos
-        $id_libro_post = mysqli_real_escape_string($conexion, $_POST['id_libro']);
-        $titulo = mysqli_real_escape_string($conexion, $_POST['titulo']);
-        $anio_publicacion = mysqli_real_escape_string($conexion, $_POST['anio_publicacion']);
-        $id_autor = mysqli_real_escape_string($conexion, $_POST['id_autor']); 
+        // 🚨 CAMBIO CRÍTICO: UPDATE con Sentencias Preparadas
+        $sql_update = "UPDATE libros SET 
+                        titulo = ?, 
+                        anio_publicacion = ?, 
+                        id_autor = ? 
+                        WHERE id_libro = ?";
         
-        if (!empty($titulo) && !empty($id_autor) && is_numeric($id_autor)) {
+        $stmt = mysqli_prepare($conexion, $sql_update); 
+        
+        if ($stmt) {
+            // VINCULACIÓN: 'siii' (String, Integer, Integer, Integer para el WHERE)
+            mysqli_stmt_bind_param($stmt, 'siii', $titulo, $anio_publicacion, $id_autor, $id_libro_post);
             
-            // Consulta SQL de Actualización (UPDATE)
-            $sql_update = "UPDATE libros SET 
-                           titulo = '$titulo', 
-                           anio_publicacion = $anio_publicacion, 
-                           id_autor = $id_autor 
-                           WHERE id_libro = $id_libro_post";
-            
-            if (mysqli_query($conexion, $sql_update)) {
+            if (mysqli_stmt_execute($stmt)) {
                 $success_msg = "Libro actualizado exitosamente.";
-                // Mantener el ID original para recargar el formulario con los nuevos datos
+                // Mantener el ID original para recargar los datos
                 $id_libro = $id_libro_post; 
             } else {
-                $error_msg = "Error al actualizar el libro: " . mysqli_error($conexion);
+                $error_msg = "Error al actualizar el libro: " . mysqli_stmt_error($stmt);
             }
+            mysqli_stmt_close($stmt);
         } else {
-            $error_msg = "El título y el autor son obligatorios.";
+            $error_msg = "Error al preparar la consulta de actualización: " . mysqli_error($conexion);
         }
+    } else {
+        $error_msg = "El título y el autor son obligatorios o contienen datos inválidos.";
     }
-    
-    // 4. Cargar los datos actuales del libro para mostrarlos en el formulario (SELECT)
-    $sql_select = "SELECT id_libro, titulo, anio_publicacion, id_autor FROM libros WHERE id_libro = $id_libro";
-    $resultado_select = mysqli_query($conexion, $sql_select);
+}
+
+// 4. Cargar los datos actuales del libro (SELECT con Sentencias Preparadas)
+$sql_select = "SELECT id_libro, titulo, anio_publicacion, id_autor FROM libros WHERE id_libro = ?";
+$stmt_select = mysqli_prepare($conexion, $sql_select); 
+
+if ($stmt_select) {
+    // VINCULACIÓN: 'i' (Integer para el ID)
+    mysqli_stmt_bind_param($stmt_select, 'i', $id_libro);
+    mysqli_stmt_execute($stmt_select);
+    $resultado_select = mysqli_stmt_get_result($stmt_select);
     
     if (mysqli_num_rows($resultado_select) == 1) {
         $libro = mysqli_fetch_assoc($resultado_select);
-    } else {
+    } else if (empty($success_msg)) { // Si no fue un UPDATE exitoso
         $error_msg = "Libro no encontrado.";
-        // Si no se encuentra, redirigir
-        // header("Location: libros.php?error=Libro no encontrado."); exit(); 
     }
-    
-    mysqli_free_result($resultado_select);
+    mysqli_stmt_close($stmt_select);
+} else {
+    $error_msg = "Error al preparar la consulta de selección: " . mysqli_error($conexion);
+}
+
+// ... El resto del código HTML se mantiene sin cambios ...
 ?>
 
 <!DOCTYPE html>
