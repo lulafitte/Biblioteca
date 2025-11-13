@@ -12,9 +12,9 @@ $id_libro = (int)$_GET['id'];
 $libro = null;
 $error_msg = "";
 $success_msg = "";
-$res_autores = null; // Inicializamos para usar más tarde
+$res_autores = null; 
 
-// 2. OBTENER AUTORES para el campo SELECT (SELECT simple, no necesita Prepared Statement)
+// 2. OBTENER AUTORES para el campo SELECT 
 $sql_autores = "SELECT id_autor, nombre FROM autores ORDER BY nombre ASC";
 $res_autores = mysqli_query($conexion, $sql_autores);
 
@@ -25,7 +25,7 @@ if (!$res_autores) {
 // 3. PROCESAR LA ACTUALIZACIÓN (si se envió el formulario por POST)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    // Obtener los datos (sin necesidad de mysqli_real_escape_string)
+    // Obtener los datos 
     $id_libro_post = (int)$_POST['id_libro'];
     $titulo = $_POST['titulo'] ?? '';
     $anio_publicacion = $_POST['anio_publicacion'] ?? null;
@@ -33,53 +33,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     if (!empty($titulo) && is_numeric($id_autor) && is_numeric($id_libro_post)) {
         
-        // 🚨 CAMBIO CRÍTICO: UPDATE con Sentencias Preparadas
+        // 🚨 ADAPTACIÓN CLAVE: Sanitizar los datos de texto (String)
+        $titulo_seguro = mysqli_real_escape_string($conexion, $titulo);
+        
+        // El año puede ser NULL en la DB. Si es null o vacío en el form, lo mandamos como NULL.
+        // Si es numérico, lo casteamos a entero.
+        $anio_seguro = (empty($anio_publicacion) || !is_numeric($anio_publicacion)) ? 'NULL' : (int)$anio_publicacion;
+        $autor_seguro = (int)$id_autor;
+        
+        // CONSTRUIR el UPDATE concatenando los valores
         $sql_update = "UPDATE libros SET 
-                        titulo = ?, 
-                        anio_publicacion = ?, 
-                        id_autor = ? 
-                        WHERE id_libro = ?";
+                        titulo = '$titulo_seguro', 
+                        anio_publicacion = $anio_seguro, 
+                        id_autor = $autor_seguro 
+                        WHERE id_libro = $id_libro_post";
         
-        $stmt = mysqli_prepare($conexion, $sql_update); 
         
-        if ($stmt) {
-            // VINCULACIÓN: 'siii' (String, Integer, Integer, Integer para el WHERE)
-            mysqli_stmt_bind_param($stmt, 'siii', $titulo, $anio_publicacion, $id_autor, $id_libro_post);
-            
-            if (mysqli_stmt_execute($stmt)) {
-                $success_msg = "Libro actualizado exitosamente.";
-                // Mantener el ID original para recargar los datos
-                $id_libro = $id_libro_post; 
-            } else {
-                $error_msg = "Error al actualizar el libro: " . mysqli_stmt_error($stmt);
-            }
-            mysqli_stmt_close($stmt);
+        // EJECUTAR con mysqli_query()
+        if (mysqli_query($conexion, $sql_update)) {
+            $success_msg = "Libro actualizado exitosamente.";
+            // Mantener el ID original para recargar los datos
+            $id_libro = $id_libro_post; 
         } else {
-            $error_msg = "Error al preparar la consulta de actualización: " . mysqli_error($conexion);
+            $error_msg = "Error al actualizar el libro: " . mysqli_error($conexion);
         }
     } else {
         $error_msg = "El título y el autor son obligatorios o contienen datos inválidos.";
     }
 }
 
-// 4. Cargar los datos actuales del libro (SELECT con Sentencias Preparadas)
-$sql_select = "SELECT id_libro, titulo, anio_publicacion, id_autor FROM libros WHERE id_libro = ?";
-$stmt_select = mysqli_prepare($conexion, $sql_select); 
+// 4. Cargar los datos actuales del libro (SELECT adaptado al estilo de clase)
+// No es necesario escapar $id_libro porque ya lo casteamos a (int)
+$sql_select = "SELECT id_libro, titulo, anio_publicacion, id_autor FROM libros WHERE id_libro = $id_libro";
 
-if ($stmt_select) {
-    // VINCULACIÓN: 'i' (Integer para el ID)
-    mysqli_stmt_bind_param($stmt_select, 'i', $id_libro);
-    mysqli_stmt_execute($stmt_select);
-    $resultado_select = mysqli_stmt_get_result($stmt_select);
-    
+$resultado_select = mysqli_query($conexion, $sql_select); 
+
+if ($resultado_select) {
     if (mysqli_num_rows($resultado_select) == 1) {
         $libro = mysqli_fetch_assoc($resultado_select);
-    } else if (empty($success_msg)) { // Si no fue un UPDATE exitoso
+    } else if (empty($success_msg)) { 
         $error_msg = "Libro no encontrado.";
     }
-    mysqli_stmt_close($stmt_select);
 } else {
-    $error_msg = "Error al preparar la consulta de selección: " . mysqli_error($conexion);
+    $error_msg = "Error al ejecutar la consulta de selección: " . mysqli_error($conexion);
 }
 
 // ... El resto del código HTML se mantiene sin cambios ...
@@ -96,7 +92,7 @@ if ($stmt_select) {
 <body>
 
     <header>
-        <h1>✍️ Editar Libro (ABM - Modificación - Nota 10)</h1>
+        <h1>✍️ Editar Libro (ABM - Modificación)</h1>
     </header>
 
     <main>
@@ -120,13 +116,13 @@ if ($stmt_select) {
             <div class="form-group">
                 <label for="titulo">Título del Libro:</label>
                 <input type="text" id="titulo" name="titulo" 
-                       value="<?php echo htmlspecialchars($libro['titulo']); ?>" required>
+                        value="<?php echo htmlspecialchars($libro['titulo']); ?>" required>
             </div>
             
             <div class="form-group">
                 <label for="anio_publicacion">Año de Publicación:</label>
                 <input type="number" id="anio_publicacion" name="anio_publicacion" min="1000" max="<?php echo date('Y'); ?>"
-                       value="<?php echo htmlspecialchars($libro['anio_publicacion']); ?>">
+                        value="<?php echo htmlspecialchars($libro['anio_publicacion']); ?>">
             </div>
 
             <div class="form-group">
@@ -157,7 +153,9 @@ if ($stmt_select) {
     </footer>
     
     <?php 
+        // Liberar el resultado de la consulta de autores y cerrar la conexión.
         if (isset($res_autores)) { mysqli_free_result($res_autores); }
+        if (isset($resultado_select)) { mysqli_free_result($resultado_select); }
         mysqli_close($conexion); 
     ?>
 </body>

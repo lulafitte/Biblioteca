@@ -8,37 +8,29 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     // Obtener el ID y forzarlo a ser un entero (el valor ya es seguro)
     $id_autor = (int)$_GET['id'];
     
-    // 🚨 CAMBIO CLAVE: DELETE con Sentencias Preparadas
-    $sql_delete = "DELETE FROM autores WHERE id_autor = ?";
-    $stmt = mysqli_prepare($conexion, $sql_delete);
+    // 🚨 ADAPTACIÓN AL ESTILO DE CLASE: DELETE con Concatenación
+    // Como $id_autor es (int) (entero), es seguro concatenarlo sin comillas.
+    $sql_delete = "DELETE FROM autores WHERE id_autor = $id_autor";
     
-    if ($stmt) {
-        // 2. VINCULAR: 'i' (integer para el ID)
-        mysqli_stmt_bind_param($stmt, 'i', $id_autor);
-        
-        // 3. EJECUTAR
-        if (mysqli_stmt_execute($stmt)) {
-            // Éxito: Redirigir
-            header("Location: index.php?msg_del=Autor eliminado exitosamente.");
-        } else {
-            // Error: Redirigir al listado con mensaje de error
-            // (Ej. si tiene libros asociados por la FK)
-            $error = mysqli_error($conexion);
-            header("Location: index.php?error_del=Error al eliminar el autor: Revisar si tiene libros asociados.");
-        }
-        mysqli_stmt_close($stmt);
-        exit();
+    // 2. EJECUTAR la consulta con mysqli_query()
+    if (mysqli_query($conexion, $sql_delete)) {
+        // Éxito: Cerrar conexión y redirigir
+        mysqli_close($conexion);
+        header("Location: index.php?msg_del=Autor eliminado exitosamente.");
     } else {
+        // Error: Capturar error, cerrar conexión y redirigir
         $error = mysqli_error($conexion);
-        header("Location: index.php?error_del=Error interno al preparar la consulta: $error");
-        exit();
+        mysqli_close($conexion);
+        header("Location: index.php?error_del=Error al eliminar el autor: Revisar si tiene libros asociados. Detalle: " . urlencode($error));
     }
+    
+    // El script siempre debe terminar con exit() después de un header Location
+    exit();
+    
 } else {
-    // Si no se recibe el ID, redirigir al listado principal
+    // Si no se recibe el ID, cerrar conexión y redirigir al listado principal
+    mysqli_close($conexion);
     header("Location: index.php?error_del=ID de autor no proporcionado o inválido.");
     exit();
 }
-
-// Cerrar la conexión
-mysqli_close($conexion);
 ?>

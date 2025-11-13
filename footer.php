@@ -1,11 +1,6 @@
- <footer>
-        <p>&copy; 2025 segundo Parcial Programación Web 2</p>
-    </footer>
-
-    <?php
-        // 4. Liberar el resultado y cerrar la conexión
-        mysqli_free_result($resultado);
-        mysqli_close($conexion);
-    ?>
+<footer>
+    <p>Biblioteca - Programación Web 2</p>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>

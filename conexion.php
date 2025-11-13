@@ -1,5 +1,12 @@
 <?php
 
+// MUESTRA ERRORES DE PHP: Actívalo temporalmente
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
+
 // 1. Definir las credenciales de la base de datos
 $servidor = "localhost"; // Generalmente es 'localhost' si usas XAMPP/WAMP
 $usuario = "root";       // Usuario por defecto de MySQL en XAMPP/WAMP
@@ -19,7 +26,7 @@ if (!$conexion) {
 }
 
 // evitar problemas de acentos y eñes
-mysqli_set_charset($conexion, "utf8");
+mysqli_set_charset($conexion, "utf8mb4");
 
 
 
