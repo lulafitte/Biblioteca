@@ -1,4 +1,6 @@
 <?php
+require_once 'sesiones.php';
+protegerPagina();
 require_once 'conexion.php';
 
 // 1. Obtener el ID del libro a editar de la URL y validar
@@ -9,6 +11,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 // El ID es seguro porque lo validamos como número.
 $id_libro = (int)$_GET['id'];
 
+// variables
 $libro = null;
 $error_msg = "";
 $success_msg = "";
@@ -64,13 +67,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 // 4. Cargar los datos actuales del libro (SELECT adaptado al estilo de clase)
 // No es necesario escapar $id_libro porque ya lo casteamos a (int)
-$sql_select = "SELECT id_libro, titulo, anio_publicacion, id_autor FROM libros WHERE id_libro = $id_libro";
+$sql_select = "SELECT id_libro, titulo, anio_publicacion, id_autor, created_by FROM libros WHERE id_libro = $id_libro";
 
 $resultado_select = mysqli_query($conexion, $sql_select); 
 
 if ($resultado_select) {
     if (mysqli_num_rows($resultado_select) == 1) {
         $libro = mysqli_fetch_assoc($resultado_select);
+        // Verificar permisos: solo el creador o administrador puede editar (si created_by existe)
+        $owner_id = $libro['created_by'] ?? null;
+        if (!esAdministrador() && $owner_id !== null && (int)($_SESSION['id_usuario'] ?? 0) !== (int)$owner_id) {
+            mysqli_close($conexion);
+            header("Location: libros.php?error=No tienes permiso para editar este libro.");
+            exit();
+        }
     } else if (empty($success_msg)) { 
         $error_msg = "Libro no encontrado.";
     }

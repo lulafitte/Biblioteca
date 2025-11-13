@@ -1,5 +1,7 @@
 <?php 
-// Reemplaza esto con tu ruta correcta para la conexión
+// Proteger la página y conectar
+require_once 'sesiones.php';
+protegerPagina();
 require_once("conexion.php"); // Usamos require_once como en el resto del proyecto
 
 // Inicializamos variables para evitar errores
@@ -28,11 +30,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         $anio_seguro = is_numeric($anio_publicacion) ? (int)$anio_publicacion : 'NULL';
         $autor_seguro = (int)$id_autor;
 
+        // El id del usuario que crea el libro (viene de la sesión)
+        $created_by = isset($_SESSION['id_usuario']) ? (int)$_SESSION['id_usuario'] : 'NULL';
 
         // CONSTRUIR la consulta SQL concatenando los valores
-        // NOTA: Los Strings (título) van entre comillas simples. Los Integer (año, autor) van sin comillas.
-        $sql = "INSERT INTO libros (titulo, anio_publicacion, id_autor) 
-                VALUES ('$titulo_seguro', $anio_seguro, $autor_seguro)";
+        // NOTA: Los Strings (título) van entre comillas simples. Los Integer (año, autor, created_by) van sin comillas.
+        $sql = "INSERT INTO libros (titulo, anio_publicacion, id_autor, created_by) 
+            VALUES ('$titulo_seguro', $anio_seguro, $autor_seguro, $created_by)";
         
         
         // EJECUTAR la consulta con mysqli_query()

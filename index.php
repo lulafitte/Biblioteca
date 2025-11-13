@@ -1,4 +1,7 @@
 <?php
+// 🔒 PROTEGER la página - Debe ir PRIMERO antes de cualquier salida
+require_once 'sesiones.php';
+protegerPagina(); // Si no está logueado, redirige al login
 
 require_once 'conexion.php';
 
@@ -34,6 +37,7 @@ $error_del_msg = isset($_GET['error_del']) ? $_GET['error_del'] : '';
     </header>
 
     <main class="main-content">
+        <?php mostrarBarraUsuario(); ?>
         <h2>Listado de Autores</h2>
         
         <?php if ($success_msg): ?>
